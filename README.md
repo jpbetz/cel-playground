@@ -22,6 +22,15 @@ curl localhost:8080/eval \
   -d '{"expression": "1 < x", "variables": {"x": 2}}'
 ```
 
+Run a playground UI:
+
+```sh
+# run a playground server first (see above)
+
+cd ui/cel-playground
+npm run start
+```
+
 TODO
 ----
 

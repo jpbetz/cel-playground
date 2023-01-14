@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -58,10 +59,21 @@ type EvalRequest struct {
 	Variables  map[string]any `json:"variables"`
 }
 
+type EvalResponse struct {
+	Result string `json:"result"`
+}
+
 func handleEval(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type")
+
 	switch r.Method {
+	case "OPTIONS":
+		w.WriteHeader(204)
+		return
 	case "POST":
 		contentType := r.Header.Get("Content-type")
 		switch contentType {
@@ -86,7 +98,12 @@ func handleEval(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		fmt.Fprintf(w, "%v", result)
+		json, err := json.Marshal(&EvalResponse{Result: fmt.Sprintf("%+v", result)})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write(json)
 	default:
 		http.Error(w, "Supported methods: POST", http.StatusMethodNotAllowed)
 	}
