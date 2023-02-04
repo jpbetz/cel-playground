@@ -1,18 +1,53 @@
 import { LitElement, html, css } from 'lit';
 import { property, customElement } from 'lit/decorators.js';
+import 'prismjs';
+import 'lit-code';
+import {load} from 'js-yaml';
+
 
 @customElement('cel-playground')
 class CelPlayground extends LitElement {
-  @property({ type: String }) expression = '1 < 2';
+  @property({ type: String }) expression = '';
+  @property({ type: String }) object = '';
   @property({ type: String }) result = '';
   @property({ type: String }) error = '';
+
+  static styles = css`
+    button {
+      
+    }
+  `
+
+  constructor() {
+    super();
+    this.expression = 'object.name == "test"';
+    this.object = 'name: test';
+  }
 
   render() {
     return html`
       <main>
         <h1>CEL Playground</h1>
 
-        <input @change="${this.updateInput}"/> <button @click="${this.handleEvaluate}">Evaluate</button> 
+        Object:
+        <lit-code
+          id="object"
+          language='yaml'
+          linenumbers
+          @update="${this.updateObject}"
+        >
+        </lit-code>
+
+        CEL:
+        <lit-code
+          id="expression"
+          language='yaml'
+          linenumbers
+          @update="${this.updateExpression}"
+        >
+        </lit-code>
+        
+        <button @click="${this.handleEvaluate}">Evaluate</button> 
 
         ${this.error != ""?
           html`
@@ -30,12 +65,15 @@ class CelPlayground extends LitElement {
     `;
   }
 
-  updateInput(e: Event) {
-    this.expression = (e.target as HTMLInputElement).value;
+  updateExpression(litCode: any) {
+    this.expression = litCode.detail;
+  }
+  updateObject(litCode: any) {
+    this.object = litCode.detail;
   }
 
   async handleEvaluate() {
-    this.requestEval(this.expression)
+    this.requestEval(this.expression, this.object)
     .then((response) => {
       if (!response.ok) {
          response.text().then(body => {
@@ -54,14 +92,19 @@ class CelPlayground extends LitElement {
     })
   }
 
-  async requestEval(expression: String): Promise<Response> {
+  async requestEval(expression: String, object: String): Promise<Response> {
     const response = await fetch("http://localhost:8080/eval", {
       method: "POST",
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({"expression": expression})
+      body: JSON.stringify({
+        "expression": expression,
+        "variables": {
+          "object": load(object.toString()),
+        },
+    })
     })
     return response
   }
